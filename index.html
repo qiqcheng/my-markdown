@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-dark" disabled>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Warm neutral palette — tinted, not dead gray */
+  --bg-base:        oklch(97.5% 0.004 80);
+  --bg-surface:     oklch(100% 0 0);
+  --bg-raised:      oklch(99% 0.002 85);
+  --bg-hover:       oklch(95% 0.008 80);
+  --bg-active:      oklch(92% 0.012 80);
+  --text-primary:   oklch(18% 0.012 80);
+  --text-secondary: oklch(42% 0.015 80);
+  --text-tertiary:  oklch(58% 0.01 80);
+  --text-placeholder: oklch(62% 0.01 80);
+  --border:         oklch(88% 0.015 85);
+  --border-focus:   oklch(55% 0.15 55);
+  --accent:         oklch(55% 0.15 55);
+  --accent-hover:   oklch(48% 0.16 50);
+  --accent-subtle:  oklch(92% 0.04 55);
+  --danger:         oklch(52% 0.18 20);
+  --success:        oklch(52% 0.15 145);
+  --shadow-sm:      0 1px 2px oklch(0% 0 0 / 0.04);
+  --shadow-md:      0 4px 12px oklch(0% 0 0 / 0.06);
+  --radius-sm:      6px;
+  --radius-md:      10px;
+  --radius-lg:      16px;
+  --transition-fast:  150ms;
+  --transition-base:  250ms;
+  --ease-out:        cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Font */
+  --font-ui:    'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+
+  /* Rhythm — base 24px grid */
+  --rhythm: 1.5rem;
+}
+
+/* ===== DARK THEME ===== */
+[data-theme="dark"] {
+  --bg-base:        oklch(14% 0.006 80);
+  --bg-surface:     oklch(18% 0.008 80);
+  --bg-raised:      oklch(20% 0.008 80);
+  --bg-hover:       oklch(24% 0.012 80);
+  --bg-active:      oklch(28% 0.015 80);
+  --text-primary:   oklch(90% 0.008 80);
+  --text-secondary: oklch(68% 0.012 80);
+  --text-tertiary:  oklch(52% 0.01 80);
+  --text-placeholder: oklch(45% 0.01 80);
+  --border:         oklch(26% 0.012 80);
+  --border-focus:   oklch(60% 0.14 55);
+  --accent:         oklch(60% 0.14 55);
+  --accent-hover:   oklch(65% 0.12 55);
+  --accent-subtle:  oklch(24% 0.04 55);
+  --shadow-sm:      0 1px 2px oklch(0% 0 0 / 0.2);
+  --shadow-md:      0 4px 12px oklch(0% 0 0 / 0.3);
+}
+
+html { height: 100%; font-size: 16px; }
+
+body {
+  height: 100%;
+  font-family: var(--font-ui);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--transition-base) var(--ease-out),
+              color var(--transition-base) var(--ease-out);
+}
+
+/* ===== HEADER ===== */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px clamp(16px, 3vw, 32px);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 10;
+  transition: background var(--transition-base) var(--ease-out),
+              border-color var(--transition-base) var(--ease-out);
+}
+
+.header__brand {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header__brand svg { flex-shrink: 0; }
+
+.header__divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.header__stats {
+  display: flex;
+  gap: clamp(8px, 2vw, 20px);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.header__stat-value {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.header__spacer { flex: 1; }
+
+.header__actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* ===== TOOLBAR ===== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px clamp(12px, 2vw, 28px);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  transition: background var(--transition-base) var(--ease-out),
+              border-color var(--transition-base) var(--ease-out);
+}
+.toolbar::-webkit-scrollbar { display: none; }
+
+.toolbar__group {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.toolbar__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn:active { transform: scale(0.96); background: var(--bg-active); }
+
+.btn--icon { padding: 7px; min-width: 34px; }
+.btn--icon svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+
+.btn--ghost { border-color: var(--border); }
+
+/* Active toggle (toolbar state) */
+.toolbar .btn[aria-pressed="true"] {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+/* ===== STATUS BAR ===== */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px clamp(16px, 3vw, 32px);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: background var(--transition-base) var(--ease-out),
+              border-color var(--transition-base) var(--ease-out);
+}
+
+.statusbar__indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+.statusbar__indicator[data-saved="false"] { background: var(--accent); }
+.statusbar__indicator[data-saved="error"] { background: var(--danger); }
+
+/* ===== MAIN LAYOUT ===== */
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 4px 1fr;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ===== PANELS ===== */
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-surface);
+  transition: background var(--transition-base) var(--ease-out);
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: border-color var(--transition-base) var(--ease-out);
+}
+
+.panel__header-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.panel--editor .panel__header-dot { background: oklch(60% 0.16 55); }
+.panel--preview .panel__header-dot { background: oklch(55% 0.12 220); }
+
+.panel__body {
+  flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+/* ===== EDITOR ===== */
+.editor {
+  width: 100%;
+  height: 100%;
+  padding: clamp(16px, 3vw, 28px);
+  font-family: var(--font-mono);
+  font-size: clamp(0.8rem, 1.5vw, 0.875rem);
+  line-height: 1.75;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  tab-size: 2;
+  caret-color: var(--accent);
+  transition: color var(--transition-base) var(--ease-out);
+}
+.editor::placeholder { color: var(--text-placeholder); }
+
+.editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-placeholder);
+  pointer-events: none;
+}
+
+/* ===== PREVIEW ===== */
+.preview {
+  padding: clamp(16px, 3vw, 28px);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+  max-width: 75ch;
+  word-break: break-word;
+  transition: color var(--transition-base) var(--ease-out);
+}
+
+/* Preview typography */
+.preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-top: 1.8em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+.preview h1:first-child,
+.preview h2:first-child,
+.preview h3:first-child { margin-top: 0; }
+
+.preview h1 { font-size: 1.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35em; }
+.preview h2 { font-size: 1.45rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25em; }
+.preview h3 { font-size: 1.2rem; }
+.preview h4 { font-size: 1.05rem; }
+
+.preview p { margin-bottom: 1em; }
+.preview p:last-child { margin-bottom: 0; }
+
+.preview a { color: var(--accent); text-decoration: none; }
+.preview a:hover { text-decoration: underline; }
+
+.preview strong { font-weight: 600; color: var(--text-primary); }
+
+.preview blockquote {
+  margin: 1em 0;
+  padding: 0.6em 1em;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-raised);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.preview blockquote p { margin-bottom: 0.4em; }
+.preview blockquote p:last-child { margin-bottom: 0; }
+
+.preview ul, .preview ol { margin: 0.8em 0; padding-left: 1.8em; }
+.preview li { margin-bottom: 0.3em; }
+.preview li:last-child { margin-bottom: 0; }
+
+.preview code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--bg-raised);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+.preview pre {
+  margin: 1.2em 0;
+  padding: 1em 1.2em;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+.preview pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+.preview pre::-webkit-scrollbar { height: 6px; }
+.preview pre::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.preview hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.8em 0;
+}
+
+.preview img { max-width: 100%; border-radius: var(--radius-sm); margin: 1em 0; }
+
+.preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.9rem;
+}
+.preview th, .preview td {
+  padding: 0.5em 0.8em;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.preview th {
+  background: var(--bg-raised);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.preview input[type="checkbox"] {
+  margin-right: 0.5em;
+  accent-color: var(--accent);
+}
+
+/* ===== DIVIDER ===== */
+.divider {
+  width: 4px;
+  cursor: col-resize;
+  background: var(--border);
+  position: relative;
+  transition: background var(--transition-fast) var(--ease-out);
+  z-index: 5;
+  flex-shrink: 0;
+}
+.divider:hover,
+.divider[data-dragging="true"] {
+  background: var(--accent);
+}
+.divider::after {
+  content: '';
+  position: absolute;
+  inset: -4px -6px;
+}
+
+/* ===== MOBILE TOGGLE ===== */
+.mobile-toggle {
+  display: none;
+}
+
+/* ===== SKELETON ===== */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-raised) 25%, var(--bg-hover) 50%, var(--bg-raised) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+.empty-state__icon {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+.empty-state__title {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+.empty-state__text {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  max-width: 32ch;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+  .divider { display: none; }
+
+  .panel--preview { display: none; }
+  .panel--preview[data-visible="true"] { display: flex; }
+  .panel--editor[data-hidden="true"] { display: none; }
+
+  .mobile-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background var(--transition-fast) var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-toggle:hover { background: var(--bg-hover); }
+  .mobile-toggle svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .header { padding: 8px 14px; }
+  .header__brand { font-size: 0.95rem; }
+  .toolbar { padding: 5px 10px; gap: 1px; }
+  .toolbar .btn { padding: 5px 7px; font-size: 0.75rem; }
+  .toolbar .btn--icon { padding: 6px; min-width: 30px; }
+  .toolbar .btn--icon svg { width: 14px; height: 14px; }
+  .toolbar__sep { margin: 0 3px; }
+  .header__stats { font-size: 0.7rem; gap: 6px; }
+
+  .editor { padding: 14px; font-size: 0.8rem; }
+  .preview { padding: 14px; font-size: 0.9rem; }
+}
+
+@media (max-width: 480px) {
+  .toolbar .btn span { display: none; }
+  .toolbar .btn--primary span { display: inline; }
+  .header__stats { display: none; }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== SCROLLBAR ===== */
+.panel__body::-webkit-scrollbar { width: 8px; }
+.panel__body::-webkit-scrollbar-track { background: transparent; }
+.panel__body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+  border: 2px solid var(--bg-surface);
+}
+.panel__body::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--text-primary);
+  color: var(--bg-surface);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 300ms var(--ease-out), opacity 300ms var(--ease-out);
+  box-shadow: var(--shadow-md);
+}
+.toast[data-visible="true"] {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header__brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <polyline points="10 9 9 9 8 9"/>
+    </svg>
+    <span>Markdown Editor</span>
+  </div>
+
+  <div class="header__divider"></div>
+
+  <div class="header__stats">
+    <span>字 <strong class="header__stat-value" id="charCount">0</strong></span>
+    <span>词 <strong class="header__stat-value" id="wordCount">0</strong></span>
+    <span>行 <strong class="header__stat-value" id="lineCount">0</strong></span>
+  </div>
+
+  <div class="header__spacer"></div>
+
+  <div class="header__actions">
+    <button class="btn btn--ghost" id="btnAutoSave" aria-label="自动保存" title="自动保存">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    </button>
+    <button class="btn btn--ghost" id="btnDownload" aria-label="下载 Markdown" title="下载 .md">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <button class="btn btn--ghost" id="btnCopyHtml" aria-label="复制 HTML" title="复制渲染后的 HTML">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    </button>
+    <button class="btn btn--icon" id="btnTheme" aria-label="切换主题" title="切换深色/浅色主题">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- TOOLBAR -->
+<div class="toolbar" role="toolbar" aria-label="编辑工具栏">
+  <div class="toolbar__group">
+    <button class="btn btn--icon" data-action="bold" aria-label="加粗" title="加粗 (Ctrl+B)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg></button>
+    <button class="btn btn--icon" data-action="italic" aria-label="斜体" title="斜体 (Ctrl+I)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg></button>
+    <button class="btn btn--icon" data-action="strikethrough" aria-label="删除线" title="删除线"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><path d="M6.5 6.5c1-1 3-2 5.5-2s4.5 1 5.5 2M6.5 17.5c1 1 3 2 5.5 2s4.5-1 5.5-2"/></svg></button>
+  </div>
+  <div class="toolbar__sep"></div>
+  <div class="toolbar__group">
+    <button class="btn btn--icon" data-action="heading" aria-label="标题" title="标题"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h12M6 4v16M18 4v16"/></svg></button>
+    <button class="btn btn--icon" data-action="link" aria-label="链接" title="链接"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+    <button class="btn btn--icon" data-action="image" aria-label="图片" title="图片"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+  </div>
+  <div class="toolbar__sep"></div>
+  <div class="toolbar__group">
+    <button class="btn btn--icon" data-action="code" aria-label="行内代码" title="行内代码"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+    <button class="btn btn--icon" data-action="codeblock" aria-label="代码块" title="代码块"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>
+    <button class="btn btn--icon" data-action="quote" aria-label="引用" title="引用"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg></button>
+  </div>
+  <div class="toolbar__sep"></div>
+  <div class="toolbar__group">
+    <button class="btn btn--icon" data-action="ul" aria-label="无序列表" title="无序列表"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+    <button class="btn btn--icon" data-action="ol" aria-label="有序列表" title="有序列表"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></button>
+    <button class="btn btn--icon" data-action="task" aria-label="任务列表" title="任务列表"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></button>
+  </div>
+  <div class="toolbar__sep"></div>
+  <div class="toolbar__group">
+    <button class="btn btn--icon" data-action="hr" aria-label="分割线" title="分割线"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/></svg></button>
+    <button class="btn btn--icon" data-action="table" aria-label="表格" title="表格"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+  </div>
+</div>
+
+<!-- MOBILE TOGGLE -->
+<button class="mobile-toggle" id="mobileToggle">
+  <svg id="mobileToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+  <span id="mobileToggleLabel">预览</span>
+</button>
+
+<!-- MAIN CONTENT -->
+<main class="main" id="mainContainer">
+  <!-- Editor Panel -->
+  <section class="panel panel--editor" id="editorPanel" aria-label="编辑器">
+    <div class="panel__header">
+      <span class="panel__header-dot"></span>
+      MARKDOWN
+    </div>
+    <div class="panel__body" id="editorBody">
+      <textarea
+        class="editor"
+        id="editor"
+        placeholder="开始书写 Markdown..."
+        aria-label="Markdown 编辑区"
+        spellcheck="false"
+      ># 欢迎使用 Markdown 编辑器
+
+这是一款**分屏实时预览**的 Markdown 编辑工具。
+
+## 功能特性
+
+- 实时预览渲染效果
+- 丰富的**工具栏**快捷操作
+- 支持 GFM 语法：表格、任务列表、代码高亮
+- 自动保存到本地浏览器存储
+- 深色 / 浅色主题切换
+- 响应式设计，移动端友好
+
+## 代码示例
+
+```javascript
+function greet(name) {
+  return `你好, ${name}!`;
+}
+
+console.log(greet('世界'));
+```
+
+## 表格
+
+| 特性 | 状态 |
+|------|------|
+| 实时预览 | 已支持 |
+| 工具栏 | 已支持 |
+| 代码高亮 | 已支持 |
+| 响应式 | 已支持 |
+
+## 任务列表
+
+- [x] 实现分屏编辑预览
+- [x] 添加工具栏
+- [ ] 同步到云端
+- [ ] 协作编辑
+
+> **提示**：试试上方的工具栏，或使用键盘快捷键（Ctrl+B 加粗、Ctrl+I 斜体）。
+
+---
+
+开始编辑左侧内容，右侧将实时渲染预览效果。</textarea>
+    </div>
+  </section>
+
+  <!-- Divider -->
+  <div class="divider" id="divider" role="separator" aria-label="拖拽调整面板宽度" tabindex="0"></div>
+
+  <!-- Preview Panel -->
+  <section class="panel panel--preview" id="previewPanel" aria-label="预览">
+    <div class="panel__header">
+      <span class="panel__header-dot"></span>
+      PREVIEW
+    </div>
+    <div class="panel__body" id="previewBody">
+      <div class="preview" id="preview"></div>
+    </div>
+  </section>
+</main>
+
+<!-- STATUS BAR -->
+<footer class="statusbar">
+  <span class="statusbar__indicator" id="saveIndicator" data-saved="true"></span>
+  <span id="saveStatus">已保存</span>
+  <span style="flex:1"></span>
+  <span id="readingTime">阅读时间 —</span>
+</footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast" aria-live="polite"></div>
+
+<script>
+/* ================================================================
+   Markdown Editor — Core Logic
+   ================================================================ */
+
+// ── DOM refs ─────────────────────────────────────────────────────
+const $editor       = document.getElementById('editor');
+const $preview      = document.getElementById('preview');
+const $divider      = document.getElementById('divider');
+const $main         = document.getElementById('mainContainer');
+const $editorPanel  = document.getElementById('editorPanel');
+const $previewPanel = document.getElementById('previewPanel');
+const $previewBody  = document.getElementById('previewBody');
+const $mobileToggle = document.getElementById('mobileToggle');
+const $mobileLabel  = document.getElementById('mobileToggleLabel');
+const $mobileIcon   = document.getElementById('mobileToggleIcon');
+const $toast        = document.getElementById('toast');
+const $saveStatus   = document.getElementById('saveStatus');
+const $saveInd      = document.getElementById('saveIndicator');
+
+// ── State ─────────────────────────────────────────────────────────
+const STORAGE_KEY   = 'md-editor-content';
+let isDirty         = false;
+let saveTimer       = null;
+let isMobileView    = window.innerWidth <= 768;
+let showPreview     = false;
+let autoSaveEnabled = true;
+
+// ── Configure marked ──────────────────────────────────────────────
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+  highlight: function(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try { return hljs.highlight(code, { language: lang }).value; }
+      catch (_) {}
+    }
+    try { return hljs.highlightAuto(code).value; }
+    catch (_) { return code; }
+  }
+});
+
+// ── Render preview ────────────────────────────────────────────────
+function renderPreview() {
+  const md = $editor.value;
+  if (!md.trim()) {
+    $preview.innerHTML = `
+      <div class="empty-state">
+        <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <div class="empty-state__title">暂无内容</div>
+        <div class="empty-state__text">在左侧编辑区输入 Markdown，这里将实时显示渲染结果。</div>
+      </div>`;
+    return;
+  }
+  try {
+    $preview.innerHTML = marked.parse(md);
+  } catch (e) {
+    $preview.innerHTML = `<p style="color:var(--danger)">渲染错误: ${e.message}</p>`;
+  }
+}
+
+// ── Update stats ──────────────────────────────────────────────────
+function updateStats() {
+  const text = $editor.value;
+  const chars = text.length;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const lines = text ? text.split('\n').length : 0;
+
+  document.getElementById('charCount').textContent = chars.toLocaleString();
+  document.getElementById('wordCount').textContent = words.toLocaleString();
+  document.getElementById('lineCount').textContent = lines;
+
+  // Reading time: avg 200 Chinese chars/min or 250 English words/min
+  const cjkChars = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+  const otherWords = words - cjkChars;
+  const minutes = Math.max(1, Math.ceil(cjkChars / 300 + otherWords / 200));
+  document.getElementById('readingTime').textContent = `阅读约 ${minutes} 分钟`;
+}
+
+// ── Auto-save ─────────────────────────────────────────────────────
+function autoSave() {
+  if (!autoSaveEnabled) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, $editor.value);
+    isDirty = false;
+    $saveStatus.textContent = '已保存';
+    $saveInd.dataset.saved = 'true';
+  } catch (e) {
+    $saveStatus.textContent = '保存失败';
+    $saveInd.dataset.saved = 'error';
+  }
+}
+
+function markDirty() {
+  isDirty = true;
+  if (!autoSaveEnabled) {
+    $saveStatus.textContent = '未保存';
+    $saveInd.dataset.saved = 'false';
+    return;
+  }
+  $saveStatus.textContent = '未保存';
+  $saveInd.dataset.saved = 'false';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(autoSave, 800);
+}
+
+// ── Load saved content ────────────────────────────────────────────
+function loadSaved() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved !== null) {
+      $editor.value = saved;
+    }
+  } catch (_) {}
+  renderPreview();
+  updateStats();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  clearTimeout(toastTimer);
+  $toast.textContent = msg;
+  $toast.dataset.visible = 'true';
+  toastTimer = setTimeout(() => { $toast.dataset.visible = 'false'; }, 2000);
+}
+
+// ── Download .md ──────────────────────────────────────────────────
+function downloadMd() {
+  const blob = new Blob([$editor.value], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'document.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('已下载 Markdown 文件');
+}
+
+// ── Auto-save toggle ──────────────────────────────────────────────
+function updateAutoSaveUI() {
+  const btn = document.getElementById('btnAutoSave');
+  if (autoSaveEnabled) {
+    btn.style.color = 'var(--accent)';
+    btn.title = '自动保存：开';
+  } else {
+    btn.style.color = '';
+    btn.title = '自动保存：关';
+  }
+}
+
+function toggleAutoSave() {
+  autoSaveEnabled = !autoSaveEnabled;
+  updateAutoSaveUI();
+  if (autoSaveEnabled) {
+    showToast('自动保存已开启');
+    markDirty(); // triggers save
+  } else {
+    showToast('自动保存已关闭');
+  }
+}
+// ── Copy HTML ─────────────────────────────────────────────────────
+function copyHtml() {
+  const html = $preview.innerHTML;
+  navigator.clipboard.writeText(html).then(
+    () => showToast('已复制渲染后的 HTML'),
+    () => showToast('复制失败，请重试')
+  );
+}
+
+// ── Theme toggle ──────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.dataset.theme || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  localStorage.setItem('md-editor-theme', next);
+
+  // Swap highlight.js theme
+  const lightCss = document.getElementById('hljs-light');
+  const darkCss = document.getElementById('hljs-dark');
+  if (next === 'dark') {
+    lightCss.disabled = true;
+    darkCss.disabled = false;
+  } else {
+    lightCss.disabled = false;
+    darkCss.disabled = true;
+  }
+
+  renderPreview();
+}
+
+function loadTheme() {
+  const saved = localStorage.getItem('md-editor-theme');
+  if (saved === 'dark') {
+    document.documentElement.dataset.theme = 'dark';
+    document.getElementById('hljs-light').disabled = true;
+    document.getElementById('hljs-dark').disabled = false;
+  }
+}
+
+// ── Editor helpers ────────────────────────────────────────────────
+function getSelection() {
+  const el = $editor;
+  return { start: el.selectionStart, end: el.selectionEnd, text: el.value.substring(el.selectionStart, el.selectionEnd) };
+}
+
+function replaceSelection(before, after) {
+  const el = $editor;
+  const s = el.selectionStart, e = el.selectionEnd;
+  const selected = el.value.substring(s, e);
+  const replacement = before + selected + after;
+  el.setRangeText(replacement, s, e, 'select');
+
+  // Re-select the inner content
+  const newStart = s + before.length;
+  const newEnd = newStart + selected.length;
+  el.setSelectionRange(newStart, newEnd);
+  el.focus();
+  onEditorChange();
+}
+
+function wrapSelection(wrapper) {
+  const el = $editor;
+  const s = el.selectionStart, e = el.selectionEnd;
+  const selected = el.value.substring(s, e);
+  if (selected) {
+    replaceSelection(wrapper, wrapper);
+  } else {
+    replaceSelection(wrapper, wrapper);
+    const p = el.selectionStart;
+    el.setSelectionRange(p - wrapper.length, p - wrapper.length);
+    el.focus();
+  }
+}
+
+function insertLine(prefix) {
+  const el = $editor;
+  const s = el.selectionStart;
+  const lineStart = el.value.lastIndexOf('\n', s - 1) + 1;
+  el.setSelectionRange(lineStart, lineStart);
+  el.setRangeText(prefix, lineStart, lineStart, 'end');
+  el.focus();
+  onEditorChange();
+}
+
+function onEditorChange() {
+  markDirty();
+  updateStats();
+  renderPreview();
+}
+
+// ── Toolbar actions ───────────────────────────────────────────────
+const toolbarActions = {
+  bold:          () => wrapSelection('**'),
+  italic:        () => wrapSelection('_'),
+  strikethrough: () => wrapSelection('~~'),
+  heading:       () => insertLine('## '),
+  link:          () => replaceSelection('[', '](url)'),
+  image:         () => replaceSelection('![alt', '](url)'),
+  code:          () => wrapSelection('`'),
+  codeblock:     () => replaceSelection('```\n', '\n```'),
+  quote:         () => insertLine('> '),
+  ul:            () => insertLine('- '),
+  ol:            () => insertLine('1. '),
+  task:          () => insertLine('- [ ] '),
+  hr:            () => {
+    const el = $editor;
+    const s = el.selectionStart;
+    el.setRangeText('\n---\n', s, s, 'end');
+    el.focus();
+    onEditorChange();
+  },
+  table:         () => {
+    const el = $editor;
+    const s = el.selectionStart;
+    const table = '\n| 列1 | 列2 | 列3 |\n|-----|-----|-----|\n|     |     |     |\n';
+    el.setRangeText(table, s, s, 'end');
+    el.focus();
+    onEditorChange();
+  }
+};
+
+// ── Divider drag ──────────────────────────────────────────────────
+let isDragging = false;
+
+function onDividerDown(e) {
+  isDragging = true;
+  $divider.dataset.dragging = 'true';
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+}
+
+function onDividerMove(e) {
+  if (!isDragging || isMobileView) return;
+  const rect = $main.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const pct = Math.max(20, Math.min(80, (x / rect.width) * 100));
+  $main.style.gridTemplateColumns = `${pct}% 4px ${100 - pct}%`;
+}
+
+function onDividerUp() {
+  if (!isDragging) return;
+  isDragging = false;
+  $divider.dataset.dragging = 'false';
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+}
+
+// ── Mobile toggle ─────────────────────────────────────────────────
+function toggleMobileView() {
+  showPreview = !showPreview;
+  if (showPreview) {
+    $editorPanel.dataset.hidden = 'true';
+    $previewPanel.dataset.visible = 'true';
+    $mobileLabel.textContent = '编辑';
+    $mobileIcon.innerHTML = '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>';
+    renderPreview();
+  } else {
+    $editorPanel.dataset.hidden = '';
+    $previewPanel.dataset.visible = '';
+    $mobileLabel.textContent = '预览';
+    $mobileIcon.innerHTML = '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>';
+    $editor.focus();
+  }
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────
+function onKeyDown(e) {
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key === 'b') { e.preventDefault(); toolbarActions.bold(); }
+  if (mod && e.key === 'i') { e.preventDefault(); toolbarActions.italic(); }
+  if (mod && e.key === 's') { e.preventDefault(); autoSave(); showToast('已手动保存'); }
+  if (mod && e.key === 'k') { e.preventDefault(); toolbarActions.link(); }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const el = $editor;
+    const s = el.selectionStart, end = el.selectionEnd;
+    if (s !== end) {
+      // Indent selected lines
+      const before = el.value.substring(0, s);
+      const selected = el.value.substring(s, end);
+      const after = el.value.substring(end);
+      const lines = selected.split('\n');
+      const indented = lines.map(l => '  ' + l).join('\n');
+      el.value = before + indented + after;
+      el.selectionStart = s;
+      el.selectionEnd = s + indented.length;
+    } else {
+      el.setRangeText('  ', s, s, 'end');
+    }
+    onEditorChange();
+  }
+  if (e.key === 'Tab' && e.shiftKey) {
+    // We don't handle Shift+Tab here since Tab is already caught
+  }
+}
+
+// ── Resize observer ───────────────────────────────────────────────
+function handleResize() {
+  const wasMobile = isMobileView;
+  isMobileView = window.innerWidth <= 768;
+
+  if (isMobileView && !wasMobile) {
+    // Switched to mobile — reset grid
+    $main.style.gridTemplateColumns = '';
+    showPreview = false;
+    $editorPanel.dataset.hidden = '';
+    $previewPanel.dataset.visible = '';
+    $mobileLabel.textContent = '预览';
+  } else if (!isMobileView && wasMobile) {
+    // Switched to desktop — restore split
+    $editorPanel.dataset.hidden = '';
+    $previewPanel.dataset.visible = '';
+    $main.style.gridTemplateColumns = '1fr 4px 1fr';
+    showPreview = false;
+  }
+}
+
+// ── Event bindings ────────────────────────────────────────────────
+$editor.addEventListener('input', onEditorChange);
+$editor.addEventListener('keydown', onKeyDown);
+$divider.addEventListener('mousedown', onDividerDown);
+$divider.addEventListener('touchstart', onDividerDown, { passive: false });
+document.addEventListener('mousemove', onDividerMove);
+document.addEventListener('touchmove', (e) => {
+  if (isDragging) { onDividerMove(e.touches[0]); }
+}, { passive: false });
+document.addEventListener('mouseup', onDividerUp);
+document.addEventListener('touchend', onDividerUp);
+window.addEventListener('resize', handleResize);
+
+document.getElementById('btnDownload').addEventListener('click', downloadMd);
+document.getElementById('btnCopyHtml').addEventListener('click', copyHtml);
+document.getElementById('btnTheme').addEventListener('click', toggleTheme);
+document.getElementById('btnAutoSave').addEventListener('click', toggleAutoSave);
+$mobileToggle.addEventListener('click', toggleMobileView);
+
+// Toolbar buttons
+document.querySelectorAll('.toolbar [data-action]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action;
+    if (toolbarActions[action]) toolbarActions[action]();
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+loadTheme();
+loadSaved();
+handleResize();
+updateAutoSaveUI();
+
+// Safety: save before unload
+window.addEventListener('beforeunload', () => { if (isDirty) autoSave(); });
+
+console.log('Markdown Editor ready.');
+</script>
+
+</body>
+</html>
